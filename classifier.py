@@ -52,7 +52,7 @@ all_tokens = sorted(set(preproccessed))
 all_tokens.extend(['<|endoftext|>', '<|unk|>'])
 vocab = {integer:token for integer, token in enumerate(all_tokens)}
 print(len(vocab.items()))
-print(list(vocab.items())[:100])
+print(list(vocab.items())[:20])
 '''
 majority_class(trainY, devY)
 print(Counter(trainY))
