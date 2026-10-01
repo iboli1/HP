@@ -31,7 +31,7 @@ def majority_class(trainY, devY):
 class SimpleTokenizer: 
     def __init__(self, vocab):
         self.str_to_int = vocab
-        self.int_to_str = {id:token for token, id in vocab.items(vocab)}
+        self.int_to_str = {id:token for token, id in vocab.items()}
 
     def encode(self, text):
         preproccessed = re.split(r'[,.;:!?/()"”]|\s', text)
@@ -51,8 +51,22 @@ preproccessed = [item.strip() for item in preproccessed if item.strip()]
 all_tokens = sorted(set(preproccessed))
 all_tokens.extend(['<|endoftext|>', '<|unk|>'])
 vocab = {integer:token for integer, token in enumerate(all_tokens)}
-print(len(vocab.items()))
-print(list(vocab.items())[:100])
+
+klaseak = trainY.unique() # Bi klaseak bektore baten gorde
+bow_klaseka = {}
+X = 5 # Gutxienez 5 aldiz ateratzen diren hitzak gorde, besteak kendu
+for k in klaseak:
+    klaseko_text = train_df[train_df["category"] == k]["text"]
+    text_j = " ".join(klaseko_text.tolist()).lower()
+    tokens = re.split(r'[,.;:!?/()"”]|\s', text_j)
+    tokens = [item.strip() for item in tokens if item.strip()]
+    tokens = Counter(tokens)
+    bow_klaseka[k] = Counter({token: freq for token, freq in tokens.items() if freq>=X}).most_common(20)
+
+
+print(bow_klaseka["CRITICAL"])
+print(bow_klaseka["CONSPIRACY"])
+
 '''
 majority_class(trainY, devY)
 print(Counter(trainY))
