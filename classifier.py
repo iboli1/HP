@@ -1,9 +1,11 @@
 import random
 import numpy as np
 import pandas as pd
+import nltk
 from scipy import sparse
 from collections import Counter
 from sklearn.feature_extraction.text import CountVectorizer
+from nltk.corpus import stopwords
 import re
 
 RANDOM_SEED = 67
@@ -19,6 +21,9 @@ trainY = train_df["category"]
 dev_df = pd.read_csv("dev.csv")
 devX = dev_df["text"]
 devY = dev_df["category"]
+
+STOP_WORDS = set(stopwords.words("spanish"))
+print("Stop-word kopurua:", len(STOP_WORDS))
 '''
 def majority_class(trainY, devY):
     counts = Counter(devY)
@@ -55,17 +60,20 @@ print(len(vocab.items()))
 print(list(vocab.items())[:20])
 
 tokenizer = SimpleTokenizer(vocab)
+klaseak = trainY.unique() # Bi klaseak bektore baten gorde
+bow_klaseka = {}
+X = 5 # Gutxienez 5 aldiz ateratzen diren hitzak gorde, besteak kendu
+for k in klaseak:
+    klaseko_text = train_df[train_df["category"] == k]["text"]
+    text_j = " ".join(klaseko_text.tolist()).lower()
+    tokens = re.split(r'[,.;:!?/()"”]|\s', text_j)
+    tokens = [item.strip() for item in tokens if item.strip()]
+    tokens = [t for t in tokens if t not in STOP_WORDS and len(t) > 1]
+    tokens = Counter(tokens)
+    bow_klaseka[k] = Counter({token: freq for token, freq in tokens.items() if freq>=X}).most_common(20)
 
-negative_texts = train_df[train_df["category"] == "CONSPIRACY"]["text"]
-print(negative_texts)
-
-negative_counts = Counter()
-for text in negative_texts:
-    negative_counts.update(tokenizer.encode(text))
-
-negatibo_errepikatuenak= negative_counts.most_common(50)
-for i, (id_, count) in enumerate(negatibo_errepikatuenak):
-    print(tokenizer.int_to_str[id_], count)
+print(bow_klaseka["CRITICAL"])
+print(bow_klaseka["CONSPIRACY"])
 
 '''
 majority_class(trainY, devY)
