@@ -1,12 +1,13 @@
 import random
 import numpy as np
 import pandas as pd
-import nltk
 from scipy import sparse
 from collections import Counter
 from sklearn.feature_extraction.text import CountVectorizer
+from sklearn import preprocessing, linear_model
 from nltk.corpus import stopwords
 import re
+import matplotlib.pyplot as plt
 
 RANDOM_SEED = 67
 random.seed(RANDOM_SEED)
@@ -22,7 +23,7 @@ dev_df = pd.read_csv("dev.csv")
 devX = dev_df["text"]
 devY = dev_df["category"]
 
-STOP_WORDS = set(stopwords.words("spanish")) - {"no", "sin", "contra", "ni"}
+STOP_WORDS = list(set(stopwords.words("spanish")) - {"no", "sin", "contra", "ni"}) # Hitz negatibo batzuk garrantzitsuak izan ahal dira
 '''
 class SimpleTokenizer: 
     def __init__(self, vocab):
@@ -51,7 +52,7 @@ class SimpleTokenizer:
 #print(list(vocab.items())[:20])
 #tokenizer = SimpleTokenizer(vocab)
 
-
+# Bag of Words eta STOP_WORDS aplikatu gure entrenamendu testura
 klaseak = trainY.unique() # Bi klaseak bektore baten gorde
 bow_klaseka = {}
 X = 5 # Gutxienez 5 aldiz ateratzen diren hitzak gorde, besteak kendu
@@ -63,6 +64,36 @@ for k in klaseak:
     tokens = [t for t in tokens if t not in STOP_WORDS and len(t) > 1]
     tokens = Counter(tokens)
     bow_klaseka[k] = Counter({token: freq for token, freq in tokens.items() if freq>=X}).most_common(20)
-print("CRITICAL: " + str(bow_klaseka["CRITICAL"]))
-print("CONSPIRACY: " + str(bow_klaseka["CONSPIRACY"]))
+#print("CRITICAL: " + str(bow_klaseka["CRITICAL"]))
+#print("CONSPIRACY: " + str(bow_klaseka["CONSPIRACY"]))
 
+
+# CountVectorizer bat sortu erregresio logistikoa egin ahal izateko
+
+vectorizer = CountVectorizer(max_features=5000, lowercase=True, binary=True, ngram_range=(1, 2), stop_words=STOP_WORDS, min_df=3)
+X_train_lr = vectorizer.fit_transform(trainX)
+X_dev_lr = vectorizer.transform(devX)
+
+le = preprocessing.LabelEncoder()
+le.fit(trainY)
+Y_train_lr = le.transform(trainY)
+Y_dev_lr = le.transform(devY)
+# Hiperparametroak doitu, kasu onena bilatu
+C = [0.095, 0.105, 0.11, 0.12, 0.13, 0.2]
+solvers = ["lbfgs", "liblinear", "saga"]
+none_weights = []
+balanced_weights = []
+for c in C:
+    for solver in solvers:
+        logreg = linear_model.LogisticRegression(C=c, solver=solver, max_iter=5000, class_weight=None)
+        logreg2 = linear_model.LogisticRegression(C=c, solver=solver, max_iter=5000, class_weight="balanced")
+        logreg.fit(X_train_lr, Y_train_lr)
+        logreg2.fit(X_train_lr, Y_train_lr)
+        lr_baseline = logreg.score(X_dev_lr, Y_dev_lr)
+        lr_baseline2 = logreg2.score(X_dev_lr, Y_dev_lr)
+        none_weights.append(lr_baseline)
+        balanced_weights.append(lr_baseline2)
+        print(f"None-ren zehaztasuna (metodoa: {solver}) (c: {c}): " + str(lr_baseline))
+        print(f"Balanced-en zehaztasuna (metodoa: {solver}) (c: {c}): " + str(lr_baseline2))
+
+# Kasu onena: liblinear_none[0.12]
