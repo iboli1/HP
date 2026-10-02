@@ -31,10 +31,10 @@ def majority_class(trainY, devY):
 class SimpleTokenizer: 
     def __init__(self, vocab):
         self.str_to_int = vocab
-        self.int_to_str = {id:token for token, id in vocab.items(vocab)}
+        self.int_to_str = {id:token for token, id in vocab.items()}
 
     def encode(self, text):
-        preproccessed = re.split(r'[,.;:!?/()"”]|\s', text)
+        preproccessed = re.split(r'[,.;:!?/()"”]|\s', text.lower())
         preproccessed = [item.strip() for item in preproccessed if item.strip()]
         preproccessed = [item if item in self.str_to_int else "<|unk|>" for item in preproccessed]
         ids = [self.str_to_int[s] for s in preproccessed]
@@ -50,9 +50,23 @@ preproccessed = re.split(r'[,.;:!?/()"”]|\s', text)
 preproccessed = [item.strip() for item in preproccessed if item.strip()]
 all_tokens = sorted(set(preproccessed))
 all_tokens.extend(['<|endoftext|>', '<|unk|>'])
-vocab = {integer:token for integer, token in enumerate(all_tokens)}
+vocab = {token:integer for integer, token in enumerate(all_tokens)}
 print(len(vocab.items()))
 print(list(vocab.items())[:20])
+
+tokenizer = SimpleTokenizer(vocab)
+
+negative_texts = train_df[train_df["category"] == "CONSPIRACY"]["text"]
+print(negative_texts)
+
+negative_counts = Counter()
+for text in negative_texts:
+    negative_counts.update(tokenizer.encode(text))
+
+negatibo_errepikatuenak= negative_counts.most_common(50)
+for i, (id_, count) in enumerate(negatibo_errepikatuenak):
+    print(tokenizer.int_to_str[id_], count)
+
 '''
 majority_class(trainY, devY)
 print(Counter(trainY))
