@@ -75,33 +75,34 @@ le.fit(trainY)
 Y_train_lr = le.transform(trainY)
 Y_dev_lr = le.transform(devY)
 
-vectorizer1 = TfidfVectorizer(max_features=15000, lowercase=True, ngram_range=(1, 2), stop_words=STOP_WORDS, min_df=3,sublinear_tf=True)
-vectorizer2 = CountVectorizer(max_features=15000, lowercase=True, ngram_range=(1, 2), stop_words=STOP_WORDS, min_df=3,binary=True)
+vectorizer1 = TfidfVectorizer(max_features=15000, lowercase=True, binary=False, ngram_range=(1, 2), stop_words=STOP_WORDS, min_df=3, sublinear_tf=True)
+vectorizer2 = CountVectorizer(max_features=7500, lowercase=True, binary=True, ngram_range=(1, 2), stop_words=STOP_WORDS, min_df=3)
 
-def saiatu_vectorizer(vectorizer):
+def saiatu_vectorizer(vectorizer, C):
 
     X_train_lr = vectorizer.fit_transform(trainX)
     X_dev_lr = vectorizer.transform(devX)
 
-    C = [4.0, 4.2, 4.4, 4.6, 4.8, 5.0, 5.2, 5.4, 5.6, 5.8, 6.0]
-    solvers = ["lbfgs", "liblinear", "saga"]
+    
+    solver = "liblinear"
     none_weights = []
     balanced_weights = []
-
     for c in C:
-        for solver in solvers:
-            logreg = linear_model.LogisticRegression(C=c, solver=solver, max_iter=5000, class_weight=None)
-            logreg2 = linear_model.LogisticRegression(C=c, solver=solver, max_iter=5000, class_weight="balanced")
-            logreg.fit(X_train_lr, Y_train_lr)
-            logreg2.fit(X_train_lr, Y_train_lr)
-            lr_baseline = logreg.score(X_dev_lr, Y_dev_lr)
-            lr_baseline2 = logreg2.score(X_dev_lr, Y_dev_lr)
-            none_weights.append(lr_baseline)
-            balanced_weights.append(lr_baseline2)
-            print(f"None-ren zehaztasuna (metodoa: {solver}) (c: {c}): " + str(lr_baseline))
-            print(f"Balanced-en zehaztasuna (metodoa: {solver}) (c: {c}): " + str(lr_baseline2))
+        logreg = linear_model.LogisticRegression(C=c, solver=solver, max_iter=5000, class_weight=None)
+        logreg2 = linear_model.LogisticRegression(C=c, solver=solver, max_iter=5000, class_weight="balanced")
+        logreg.fit(X_train_lr, Y_train_lr)
+        logreg2.fit(X_train_lr, Y_train_lr)
+        lr_baseline = logreg.score(X_dev_lr, Y_dev_lr)
+        lr_baseline2 = logreg2.score(X_dev_lr, Y_dev_lr)
+        none_weights.append(lr_baseline)
+        balanced_weights.append(lr_baseline2)
+        print(f"None-ren zehaztasuna (metodoa: {solver}) (c: {c}): " + str(lr_baseline))
+        print(f"Balanced-en zehaztasuna (metodoa: {solver}) (c: {c}): " + str(lr_baseline2))
+C1 = [4.0, 4.2, 4.4, 4.6, 4.8, 5.0, 5.2, 5.4, 5.6, 5.8, 6.0]
+C2 = [0.095, 0.1, 0.11, 0.12, 0.14]
 
-saiatu_vectorizer(vectorizer2)
+saiatu_vectorizer(vectorizer1, C1)
+saiatu_vectorizer(vectorizer2, C2)
 # Hiperparametroak doitu, kasu onena bilatu
 
 
