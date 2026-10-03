@@ -8,6 +8,7 @@ from sklearn import preprocessing, linear_model
 from nltk.corpus import stopwords
 import re
 import matplotlib.pyplot as plt
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 RANDOM_SEED = 67
 random.seed(RANDOM_SEED)
@@ -70,7 +71,7 @@ for k in klaseak:
 
 # CountVectorizer bat sortu erregresio logistikoa egin ahal izateko
 
-vectorizer = CountVectorizer(max_features=5000, lowercase=True, binary=True, ngram_range=(1, 2), stop_words=STOP_WORDS, min_df=3)
+vectorizer = TfidfVectorizer(max_features=50000, lowercase=True, ngram_range=(1, 2), stop_words=STOP_WORDS, min_df=3,sublinear_tf=True)
 X_train_lr = vectorizer.fit_transform(trainX)
 X_dev_lr = vectorizer.transform(devX)
 
@@ -79,7 +80,7 @@ le.fit(trainY)
 Y_train_lr = le.transform(trainY)
 Y_dev_lr = le.transform(devY)
 # Hiperparametroak doitu, kasu onena bilatu
-C = [0.095, 0.105, 0.11, 0.12, 0.13, 0.2]
+C = [4.0, 4.2, 4.4, 4.6, 4.8, 5.0, 5.2, 5.4, 5.6, 5.8, 6.0]
 solvers = ["lbfgs", "liblinear", "saga"]
 none_weights = []
 balanced_weights = []
