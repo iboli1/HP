@@ -1,14 +1,13 @@
 import random
 import numpy as np
 import pandas as pd
-from scipy import sparse
 from collections import Counter
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn import preprocessing, linear_model
 from nltk.corpus import stopwords
 import re
-import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics import f1_score
 
 RANDOM_SEED = 67
 random.seed(RANDOM_SEED)
@@ -23,6 +22,11 @@ trainY = train_df["category"]
 dev_df = pd.read_csv("dev.csv")
 devX = dev_df["text"]
 devY = dev_df["category"]
+
+# test-eko datuak irakurri
+
+test_df = pd.read_csv("test_clean.csv")
+testX = test_df["text"]
 
 STOP_WORDS = list(set(stopwords.words("spanish")) - {"no", "sin", "contra", "ni"}) # Hitz negatibo batzuk garrantzitsuak izan ahal dira
 '''
@@ -78,33 +82,55 @@ Y_dev_lr = le.transform(devY)
 vectorizer1 = TfidfVectorizer(max_features=15000, lowercase=True, binary=False, ngram_range=(1, 2), stop_words=STOP_WORDS, min_df=3, sublinear_tf=True)
 vectorizer2 = CountVectorizer(max_features=7500, lowercase=True, binary=True, ngram_range=(1, 2), stop_words=STOP_WORDS, min_df=3)
 
+# Hiperparametroak doitu, kasu onena bilatu
 def saiatu_vectorizer(vectorizer, C):
 
     X_train_lr = vectorizer.fit_transform(trainX)
     X_dev_lr = vectorizer.transform(devX)
 
     
-    solver = "liblinear"
     none_weights = []
     balanced_weights = []
     for c in C:
-        logreg = linear_model.LogisticRegression(C=c, solver=solver, max_iter=5000, class_weight=None)
-        logreg2 = linear_model.LogisticRegression(C=c, solver=solver, max_iter=5000, class_weight="balanced")
+        logreg = linear_model.LogisticRegression(C=c, solver="liblinear", max_iter=5000, class_weight=None)
+        logreg2 = linear_model.LogisticRegression(C=c, solver="liblinear", max_iter=5000, class_weight="balanced")
         logreg.fit(X_train_lr, Y_train_lr)
         logreg2.fit(X_train_lr, Y_train_lr)
         lr_baseline = logreg.score(X_dev_lr, Y_dev_lr)
-        lr_baseline2 = logreg2.score(X_dev_lr, Y_dev_lr)
-        none_weights.append(lr_baseline)
-        balanced_weights.append(lr_baseline2)
-        print(f"None-ren zehaztasuna (metodoa: {solver}) (c: {c}): " + str(lr_baseline))
-        print(f"Balanced-en zehaztasuna (metodoa: {solver}) (c: {c}): " + str(lr_baseline2))
-C1 = [4.0, 4.2, 4.4, 4.6, 4.8, 5.0, 5.2, 5.4, 5.6, 5.8, 6.0]
-C2 = [0.095, 0.1, 0.11, 0.12, 0.14]
+        lr_baseline2 = f1_score(X_dev_lr, Y_dev_lr)
+        print(f"None-ren zehaztasuna (metodoa: liblinear) (c: {c}): " + str(lr_baseline))
+        print(f"Balanced-en zehaztasuna (metodoa: liblinear) (c: {c}): " + str(lr_baseline2))
+# Kasu onenak: count->liblinear_none[0.12] eta tfid->liblinear_none[4.0]
+C1 = [0.5, 1.0, 2.0, 3.0, 3.8, 4.0, 4.2, 4.4, 4.6]
+C2 = [0.05, 0.12, 0.2, 0.75, 1.0, 2.0]
 
-saiatu_vectorizer(vectorizer1, C1)
-saiatu_vectorizer(vectorizer2, C2)
-# Hiperparametroak doitu, kasu onena bilatu
+#saiatu_vectorizer(vectorizer1, C1)
+#saiatu_vectorizer(vectorizer2, C2)
 
 
+def iragarpen (vectorizer, C):
+    X_train_lr = vectorizer.fit_transform(trainX)
+    X_dev_lr = vectorizer.transform(devX)
 
-# Kasu onena: liblinear_none[0.12]
+    logreg = linear_model.LogisticRegression(C=C, solver="liblinear", max_iter=5000, class_weight="balanced")
+    logreg.fit(X_train_lr, Y_train_lr)
+    pred_num = logreg.predict(X_dev_lr)
+    pred = le.inverse_transform(pred_num)
+    return pred
+pred1 = iragarpen(vectorizer1, 4.0) # len = 1000
+pred2 = iragarpen(vectorizer2, 0.12) # len = 1000
+
+def iragarpenTest (vectorizer, C):
+    X_train_lr = vectorizer.fit_transform(trainX)
+    X_test_lr = vectorizer.transform(testX)
+
+    logreg = linear_model.LogisticRegression(C=C, solver="liblinear", max_iter=5000, class_weight=None)
+    logreg.fit(X_train_lr, Y_train_lr)
+    pred_num = logreg.predict(X_test_lr)
+    pred = le.inverse_transform(pred_num)
+    return pred
+
+pred1 = iragarpenTest(vectorizer1, 4.0)
+
+pred_df1 = pd.DataFrame({"id": range(len(pred1)), "pred_label": pred1})
+pred_df1.to_csv("pred.csv", index=False)
