@@ -88,7 +88,6 @@ def saiatu_vectorizer(vectorizer, C):
     X_train_lr = vectorizer.fit_transform(trainX)
     X_dev_lr = vectorizer.transform(devX)
 
-    
     none_weights = []
     balanced_weights = []
     for c in C:
