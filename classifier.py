@@ -8,6 +8,7 @@ from nltk.corpus import stopwords
 import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import f1_score
+import spacy
 
 RANDOM_SEED = 67
 random.seed(RANDOM_SEED)
@@ -59,21 +60,37 @@ class SimpleTokenizer:
 
 # Bag of Words eta STOP_WORDS aplikatu gure entrenamendu testura
 
-klaseak = trainY.unique() # Bi klaseak bektore baten gorde
-bow_klaseka = {}
-X = 5 # Gutxienez 5 aldiz ateratzen diren hitzak gorde, besteak kendu
-for k in klaseak:
-    klaseko_text = train_df[train_df["category"] == k]["text"]
-    text_j = " ".join(klaseko_text.tolist()).lower()
-    tokens = re.split(r'[,.;:!?/()"”]|\s', text_j)
-    tokens = [item.strip() for item in tokens if item.strip()]
-    tokens = [t for t in tokens if t not in STOP_WORDS and len(t) > 1]
-    tokens = Counter(tokens)
-    bow_klaseka[k] = Counter({token: freq for token, freq in tokens.items() if freq>=X}).most_common(20)
+#klaseak = trainY.unique() # Bi klaseak bektore baten gorde
+#bow_klaseka = {}
+#X = 5 # Gutxienez 5 aldiz ateratzen diren hitzak gorde, besteak kendu
+#for k in klaseak:
+#    klaseko_text = train_df[train_df["category"] == k]["text"]
+#    text_j = " ".join(klaseko_text.tolist()).lower()
+#    tokens = re.split(r'[,.;:!?/()"”]|\s', text_j)
+#    tokens = [item.strip() for item in tokens if item.strip()]
+#    tokens = [t for t in tokens if t not in STOP_WORDS and len(t) > 1]
+#    tokens = Counter(tokens)
+#    bow_klaseka[k] = Counter({token: freq for token, freq in tokens.items() if freq>=X}).most_common(20)
 
 #print("CRITICAL: " + str(bow_klaseka["CRITICAL"]))
 #print("CONSPIRACY: " + str(bow_klaseka["CONSPIRACY"]))
 
+nlp_lema = spacy.load("es_core_news_sm", disable = ["ner", "parser"])
+
+# Lematizazioa gehitu
+def lematizatu_corpusa (corpus):
+    emaitzak = []
+    for dok in nlp_lema.pipe(corpus, batch_size=64):
+        lema = [token.lemma_.lower() for token in dok]
+        emaitzak.append(" ".join(lema))
+    return emaitzak
+
+def kendu_stopwordak (token_zerrenda):
+    return [t for t in token_zerrenda if t not in STOP_WORDS]
+
+trainX = lematizatu_corpusa(trainX)
+devX = lematizatu_corpusa(devX)
+testX = lematizatu_corpusa(testX)
 
 # CountVectorizer bat sortu erregresio logistikoa egin ahal izateko
 le = preprocessing.LabelEncoder()
@@ -89,28 +106,29 @@ def saiatu_vectorizer(vectorizer, C):
 
     X_train_lr = vectorizer.fit_transform(trainX)
     X_dev_lr = vectorizer.transform(devX)
+    solvers = ["lbfgs", "liblinear", "saga"]
     for c in C:
-        logreg = linear_model.LogisticRegression(C=c, solver="liblinear", max_iter=5000, class_weight=None)
-        logreg2 = linear_model.LogisticRegression(C=c, solver="liblinear", max_iter=5000, class_weight="balanced")
-        logreg.fit(X_train_lr, Y_train_lr)
-        logreg2.fit(X_train_lr, Y_train_lr)
-        pred_num1 = logreg.predict(X_dev_lr)
-        lr_baseline = f1_score(Y_dev_lr, pred_num1, average="macro")
-        #lr_baseline = logreg.score(X_dev_lr, Y_dev_lr)
-        pred_num2 = logreg2.predict(X_dev_lr)
-        lr_baseline2 = f1_score(Y_dev_lr, pred_num2, average="macro")
-        #lr_baseline2 = logreg2.score(X_dev_lr, Y_dev_lr)
-        if lr_baseline > 0.79:
-            print(f"None-ren zehaztasuna (metodoa: liblinear) (c: {c}): " + str(lr_baseline))
-        if lr_baseline2 > 0.79:
-            print(f"Balanced-en zehaztasuna (metodoa: liblinear) (c: {c}): " + str(lr_baseline2))
+        for solver in solvers:
+            logreg = linear_model.LogisticRegression(C=c, solver=solver, max_iter=5000, class_weight=None)
+            logreg2 = linear_model.LogisticRegression(C=c, solver=solver, max_iter=5000, class_weight="balanced")
+            logreg.fit(X_train_lr, Y_train_lr)
+            logreg2.fit(X_train_lr, Y_train_lr)
+            pred_num1 = logreg.predict(X_dev_lr)
+            lr_baseline = f1_score(Y_dev_lr, pred_num1, average="macro")
+            #lr_baseline = logreg.score(X_dev_lr, Y_dev_lr)
+            pred_num2 = logreg2.predict(X_dev_lr)
+            lr_baseline2 = f1_score(Y_dev_lr, pred_num2, average="macro")
+            #lr_baseline2 = logreg2.score(X_dev_lr, Y_dev_lr)
+            if lr_baseline > 0.79:
+                print(f"None-ren zehaztasuna (metodoa: {solver}) (c: {c}): " + str(lr_baseline))
+            if lr_baseline2 > 0.79:
+                print(f"Balanced-en zehaztasuna (metodoa: {solver}) (c: {c}): " + str(lr_baseline2))
 # Kasu onenak: count->liblinear_none[0.12] eta tfid->liblinear_none[4.0]
-C1 = [2.0, 3.0, 3.8, 4.0, 4.2, 4.4, 4.6, 8.0, 10.0]
-C2 = [0.001, 0.05, 0.1, 0.12, 0.2, 0.75, 1.0, 2.0, 5.0, 10.0]
+C1 = [0.1, 0.5, 1.0, 1.5, 2.0, 3.0, 3.8, 4.0, 4.2, 4.4]
+C2 = [0.001, 0.05, 0.1, 0.12, 0.2, 0.75, 1.0, 2.0, 3.75, 5.0, 10.0]
 
 saiatu_vectorizer(vectorizer1, C1)
 saiatu_vectorizer(vectorizer2, C2)
-
 
 def iragarpen (vectorizer, C):
     X_train_lr = vectorizer.fit_transform(trainX)
