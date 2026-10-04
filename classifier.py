@@ -58,6 +58,7 @@ class SimpleTokenizer:
 #tokenizer = SimpleTokenizer(vocab)
 
 # Bag of Words eta STOP_WORDS aplikatu gure entrenamendu testura
+
 klaseak = trainY.unique() # Bi klaseak bektore baten gorde
 bow_klaseka = {}
 X = 5 # Gutxienez 5 aldiz ateratzen diren hitzak gorde, besteak kendu
@@ -69,6 +70,7 @@ for k in klaseak:
     tokens = [t for t in tokens if t not in STOP_WORDS and len(t) > 1]
     tokens = Counter(tokens)
     bow_klaseka[k] = Counter({token: freq for token, freq in tokens.items() if freq>=X}).most_common(20)
+
 #print("CRITICAL: " + str(bow_klaseka["CRITICAL"]))
 #print("CONSPIRACY: " + str(bow_klaseka["CONSPIRACY"]))
 
@@ -80,31 +82,34 @@ Y_train_lr = le.transform(trainY)
 Y_dev_lr = le.transform(devY)
 
 vectorizer1 = TfidfVectorizer(max_features=15000, lowercase=True, binary=False, ngram_range=(1, 2), stop_words=STOP_WORDS, min_df=3, sublinear_tf=True)
-vectorizer2 = CountVectorizer(max_features=7500, lowercase=True, binary=True, ngram_range=(1, 2), stop_words=STOP_WORDS, min_df=3)
+vectorizer2 = CountVectorizer(max_features=7500, lowercase=True, binary=False, ngram_range=(1, 2), stop_words=STOP_WORDS, min_df=3)
 
 # Hiperparametroak doitu, kasu onena bilatu
 def saiatu_vectorizer(vectorizer, C):
 
     X_train_lr = vectorizer.fit_transform(trainX)
     X_dev_lr = vectorizer.transform(devX)
-
-    none_weights = []
-    balanced_weights = []
     for c in C:
         logreg = linear_model.LogisticRegression(C=c, solver="liblinear", max_iter=5000, class_weight=None)
         logreg2 = linear_model.LogisticRegression(C=c, solver="liblinear", max_iter=5000, class_weight="balanced")
         logreg.fit(X_train_lr, Y_train_lr)
         logreg2.fit(X_train_lr, Y_train_lr)
-        lr_baseline = logreg.score(X_dev_lr, Y_dev_lr)
-        lr_baseline2 = f1_score(X_dev_lr, Y_dev_lr)
-        print(f"None-ren zehaztasuna (metodoa: liblinear) (c: {c}): " + str(lr_baseline))
-        print(f"Balanced-en zehaztasuna (metodoa: liblinear) (c: {c}): " + str(lr_baseline2))
+        pred_num1 = logreg.predict(X_dev_lr)
+        lr_baseline = f1_score(Y_dev_lr, pred_num1, average="macro")
+        #lr_baseline = logreg.score(X_dev_lr, Y_dev_lr)
+        pred_num2 = logreg2.predict(X_dev_lr)
+        lr_baseline2 = f1_score(Y_dev_lr, pred_num2, average="macro")
+        #lr_baseline2 = logreg2.score(X_dev_lr, Y_dev_lr)
+        if lr_baseline > 0.79:
+            print(f"None-ren zehaztasuna (metodoa: liblinear) (c: {c}): " + str(lr_baseline))
+        if lr_baseline2 > 0.79:
+            print(f"Balanced-en zehaztasuna (metodoa: liblinear) (c: {c}): " + str(lr_baseline2))
 # Kasu onenak: count->liblinear_none[0.12] eta tfid->liblinear_none[4.0]
-C1 = [0.5, 1.0, 2.0, 3.0, 3.8, 4.0, 4.2, 4.4, 4.6]
-C2 = [0.05, 0.12, 0.2, 0.75, 1.0, 2.0]
+C1 = [2.0, 3.0, 3.8, 4.0, 4.2, 4.4, 4.6, 8.0, 10.0]
+C2 = [0.001, 0.05, 0.1, 0.12, 0.2, 0.75, 1.0, 2.0, 5.0, 10.0]
 
-#saiatu_vectorizer(vectorizer1, C1)
-#saiatu_vectorizer(vectorizer2, C2)
+saiatu_vectorizer(vectorizer1, C1)
+saiatu_vectorizer(vectorizer2, C2)
 
 
 def iragarpen (vectorizer, C):
