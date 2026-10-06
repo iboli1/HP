@@ -30,51 +30,6 @@ test_df = pd.read_csv("test_clean.csv")
 testX = test_df["text"]
 
 STOP_WORDS = list(set(stopwords.words("spanish")) - {"no", "sin", "contra", "ni"}) # Hitz negatibo batzuk garrantzitsuak izan ahal dira
-'''
-class SimpleTokenizer: 
-    def __init__(self, vocab):
-        self.str_to_int = vocab
-        self.int_to_str = {id:token for token, id in vocab.items()}
-'''
-#    def encode(self, text):
-#        preproccessed = re.split(r'[,.;:!?/()"”]|\s', text.lower())
-#        preproccessed = [item.strip() for item in preproccessed if item.strip()]
-#        preproccessed = [item if item in self.str_to_int else "<|unk|>" for item in preproccessed]
-#        ids = [self.str_to_int[s] for s in preproccessed]
-#        return ids
-
-#    def decode(self, ids):
-#        text = " ".join([self.int_to_str[i] for i in ids])
-#        text = re.sub(r'\s+[,.;:!?/()"”]', r'\1', text)
-#        return text
-
-#text = " ".join(trainX.tolist()).lower() # Hitz guztiak bektore luze bakar baten batu nahi ditugu gero split bat egin ahal izateko. trainX lista batera bihurtu behar da hori egiteko
-#preproccessed = re.split(r'[,.;:!?/()"”]|\s', text)
-#preproccessed = [item.strip() for item in preproccessed if item.strip()]
-#all_tokens = sorted(set(preproccessed))
-#all_tokens.extend(['<|endoftext|>', '<|unk|>'])
-#vocab = {token:integer for integer, token in enumerate(all_tokens)}
-#print(len(vocab.items()))
-#print(list(vocab.items())[:20])
-#tokenizer = SimpleTokenizer(vocab)
-
-# Bag of Words eta STOP_WORDS aplikatu gure entrenamendu testura
-
-#klaseak = trainY.unique() # Bi klaseak bektore baten gorde
-#bow_klaseka = {}
-#X = 5 # Gutxienez 5 aldiz ateratzen diren hitzak gorde, besteak kendu
-#for k in klaseak:
-#    klaseko_text = train_df[train_df["category"] == k]["text"]
-#    text_j = " ".join(klaseko_text.tolist()).lower()
-#    tokens = re.split(r'[,.;:!?/()"”]|\s', text_j)
-#    tokens = [item.strip() for item in tokens if item.strip()]
-#    tokens = [t for t in tokens if t not in STOP_WORDS and len(t) > 1]
-#    tokens = Counter(tokens)
-#    bow_klaseka[k] = Counter({token: freq for token, freq in tokens.items() if freq>=X}).most_common(20)
-
-#print("CRITICAL: " + str(bow_klaseka["CRITICAL"]))
-#print("CONSPIRACY: " + str(bow_klaseka["CONSPIRACY"]))
-
 nlp_lema = spacy.load("es_core_news_sm", disable = ["ner", "parser"])
 
 # Lematizazioa gehitu
@@ -88,9 +43,9 @@ def lematizatu_corpusa (corpus):
 def kendu_stopwordak (token_zerrenda):
     return [t for t in token_zerrenda if t not in STOP_WORDS]
 
-trainX = lematizatu_corpusa(trainX)
-devX = lematizatu_corpusa(devX)
-testX = lematizatu_corpusa(testX)
+#trainX = lematizatu_corpusa(trainX)
+#devX = lematizatu_corpusa(devX)
+#testX = lematizatu_corpusa(testX)
 
 # CountVectorizer bat sortu erregresio logistikoa egin ahal izateko
 le = preprocessing.LabelEncoder()
@@ -98,15 +53,16 @@ le.fit(trainY)
 Y_train_lr = le.transform(trainY)
 Y_dev_lr = le.transform(devY)
 
-vectorizer1 = TfidfVectorizer(max_features=15000, lowercase=True, binary=False, ngram_range=(1, 2), stop_words=STOP_WORDS, min_df=3, sublinear_tf=True)
-vectorizer2 = CountVectorizer(max_features=7500, lowercase=True, binary=False, ngram_range=(1, 2), stop_words=STOP_WORDS, min_df=3)
-
 # Hiperparametroak doitu, kasu onena bilatu
 def saiatu_vectorizer(vectorizer, C):
 
     X_train_lr = vectorizer.fit_transform(trainX)
     X_dev_lr = vectorizer.transform(devX)
     solvers = ["lbfgs", "liblinear", "saga"]
+    onena = 0.0
+    COnena = None
+    solverOnena = None
+    weightOnena = None
     for c in C:
         for solver in solvers:
             logreg = linear_model.LogisticRegression(C=c, solver=solver, max_iter=5000, class_weight=None)
@@ -119,16 +75,40 @@ def saiatu_vectorizer(vectorizer, C):
             pred_num2 = logreg2.predict(X_dev_lr)
             lr_baseline2 = f1_score(Y_dev_lr, pred_num2, average="macro")
             #lr_baseline2 = logreg2.score(X_dev_lr, Y_dev_lr)
-            if lr_baseline > 0.79:
-                print(f"None-ren zehaztasuna (metodoa: {solver}) (c: {c}): " + str(lr_baseline))
-            if lr_baseline2 > 0.79:
-                print(f"Balanced-en zehaztasuna (metodoa: {solver}) (c: {c}): " + str(lr_baseline2))
-# Kasu onenak: count->liblinear_none[0.12] eta tfid->liblinear_none[4.0]
-C1 = [0.1, 0.5, 1.0, 1.5, 2.0, 3.0, 3.8, 4.0, 4.2, 4.4]
-C2 = [0.001, 0.05, 0.1, 0.12, 0.2, 0.75, 1.0, 2.0, 3.75, 5.0, 10.0]
 
-saiatu_vectorizer(vectorizer1, C1)
-saiatu_vectorizer(vectorizer2, C2)
+            if lr_baseline > lr_baseline2: 
+                 unekoa = lr_baseline
+                 weightUnekoa = "None"
+            else:
+                 unekoa = lr_baseline2
+                 weightUnekoa = "Balanced"
+
+            if onena < unekoa:
+                COnena = c
+                solverOnena = solver
+                onena = unekoa
+                weightOnena = weightUnekoa
+    print(f"Max features: {vectorizer.max_features}, min_df: {vectorizer.min_df}, ngrams: {vectorizer.ngram_range},weight: {weightOnena}-ren zehastauna (metodoa: {solverOnena}) (c: {COnena}): " + str(onena))
+    return onena, vectorizer.max_features, vectorizer.min_df, vectorizer.ngram_range, weightOnena, solverOnena, COnena
+C1 = [2.0, 3.0, 3.8, 4.0, 4.2, 4.4, 4.8, 5.0, 5.2, 5.5, 10.0]
+#C2 = [0.001, 0.05, 0.1, 0.12, 0.2, 0.75, 1.0, 2.0, 3.75, 5.0, 10.0]
+
+all_features = [40000, 60000, 80000, 100000]
+ngrams = [(1, 3), (1, 4), (1, 5), (1, 6), (1, 7), (1, 8), (1, 9), (1, 10)]
+min_dfs = [1, 2, 3, 5, 10]
+onenak = []
+for features in all_features:
+    for ngram in ngrams:
+            for mins in min_dfs:
+                vectorizer1 = TfidfVectorizer(max_features=features, lowercase=True, binary=False, ngram_range=ngram, stop_words=STOP_WORDS, min_df=mins, sublinear_tf=True)
+                sol = saiatu_vectorizer(vectorizer1, C1)
+                onenak.append(sol)
+                onenak.sort(reverse=True)
+                if len(onenak)>5:
+                    onenak.pop()
+for onena in onenak:
+    print(onena)
+#saiatu_vectorizer(vectorizer2, C2)
 
 def iragarpen (vectorizer, C):
     X_train_lr = vectorizer.fit_transform(trainX)
@@ -139,8 +119,8 @@ def iragarpen (vectorizer, C):
     pred_num = logreg.predict(X_dev_lr)
     pred = le.inverse_transform(pred_num)
     return pred
-pred1 = iragarpen(vectorizer1, 4.0) # len = 1000
-pred2 = iragarpen(vectorizer2, 0.12) # len = 1000
+#pred1 = iragarpen(vectorizer1, 4.0) # len = 1000
+#pred2 = iragarpen(vectorizer2, 0.12) # len = 1000
 
 def iragarpenTest (vectorizer, C):
     X_train_lr = vectorizer.fit_transform(trainX)
@@ -152,7 +132,7 @@ def iragarpenTest (vectorizer, C):
     pred = le.inverse_transform(pred_num)
     return pred
 
-pred1 = iragarpenTest(vectorizer1, 4.0)
+#pred1 = iragarpenTest(vectorizer1, 4.0)
 
-pred_df1 = pd.DataFrame({"id": range(len(pred1)), "pred_label": pred1})
-pred_df1.to_csv("pred.csv", index=False)
+#pred_df1 = pd.DataFrame({"id": range(len(pred1)), "pred_label": pred1})
+#pred_df1.to_csv("pred.csv", index=False)
