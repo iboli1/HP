@@ -90,13 +90,14 @@ def saiatu_vectorizer(vectorizer, C):
                 weightOnena = weightUnekoa
     print(f"Max features: {vectorizer.max_features}, min_df: {vectorizer.min_df}, ngrams: {vectorizer.ngram_range},weight: {weightOnena}-ren zehastauna (metodoa: {solverOnena}) (c: {COnena}): " + str(onena))
     return onena, vectorizer.max_features, vectorizer.min_df, vectorizer.ngram_range, weightOnena, solverOnena, COnena
-C1 = [2.0, 3.0, 3.8, 4.0, 4.2, 4.4, 4.8, 5.0, 5.2, 5.5, 10.0]
+C1 = [0.01, 0.5, 1.0, 2.0, 5.0, 10.0, 15.0, 20.0, 50.0]
 #C2 = [0.001, 0.05, 0.1, 0.12, 0.2, 0.75, 1.0, 2.0, 3.75, 5.0, 10.0]
 
 all_features = [40000, 60000, 80000, 100000]
 ngrams = [(1, 3), (1, 4), (1, 5), (1, 6), (1, 7), (1, 8), (1, 9), (1, 10)]
-min_dfs = [1, 2, 3, 5, 10]
+min_dfs = [1, 2, 3, 5]
 onenak = []
+'''
 for features in all_features:
     for ngram in ngrams:
             for mins in min_dfs:
@@ -108,31 +109,32 @@ for features in all_features:
                     onenak.pop()
 for onena in onenak:
     print(onena)
+'''
 #saiatu_vectorizer(vectorizer2, C2)
 
 def iragarpen (vectorizer, C):
     X_train_lr = vectorizer.fit_transform(trainX)
     X_dev_lr = vectorizer.transform(devX)
 
-    logreg = linear_model.LogisticRegression(C=C, solver="liblinear", max_iter=5000, class_weight="balanced")
+    logreg = linear_model.LogisticRegression(C=C, solver="lbfgs", max_iter=5000, class_weight="balanced")
     logreg.fit(X_train_lr, Y_train_lr)
     pred_num = logreg.predict(X_dev_lr)
     pred = le.inverse_transform(pred_num)
     return pred
-#pred1 = iragarpen(vectorizer1, 4.0) # len = 1000
-#pred2 = iragarpen(vectorizer2, 0.12) # len = 1000
+vectorizerIragarpen = TfidfVectorizer(max_features=40000, lowercase=True, binary=False, ngram_range=(1,3), stop_words=STOP_WORDS, min_df=2, sublinear_tf=True)
+#pred1 = iragarpen(vectorizerIragarpen, 10.0) # len = 1000
 
 def iragarpenTest (vectorizer, C):
     X_train_lr = vectorizer.fit_transform(trainX)
     X_test_lr = vectorizer.transform(testX)
 
-    logreg = linear_model.LogisticRegression(C=C, solver="liblinear", max_iter=5000, class_weight=None)
+    logreg = linear_model.LogisticRegression(C=C, solver="lbfgs", max_iter=5000, class_weight="balanced")
     logreg.fit(X_train_lr, Y_train_lr)
     pred_num = logreg.predict(X_test_lr)
     pred = le.inverse_transform(pred_num)
     return pred
 
-#pred1 = iragarpenTest(vectorizer1, 4.0)
+#pred1 = iragarpenTest(vectorizerIragarpen, 10.0)
 
 #pred_df1 = pd.DataFrame({"id": range(len(pred1)), "pred_label": pred1})
 #pred_df1.to_csv("pred.csv", index=False)
