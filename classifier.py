@@ -43,9 +43,9 @@ def lematizatu_corpusa (corpus):
 def kendu_stopwordak (token_zerrenda):
     return [t for t in token_zerrenda if t not in STOP_WORDS]
 
-#trainX = lematizatu_corpusa(trainX)
-#devX = lematizatu_corpusa(devX)
-#testX = lematizatu_corpusa(testX)
+trainX = lematizatu_corpusa(trainX)
+devX = lematizatu_corpusa(devX)
+testX = lematizatu_corpusa(testX)
 
 # CountVectorizer bat sortu erregresio logistikoa egin ahal izateko
 le = preprocessing.LabelEncoder()
@@ -91,13 +91,12 @@ def saiatu_vectorizer(vectorizer, C):
     print(f"Max features: {vectorizer.max_features}, min_df: {vectorizer.min_df}, ngrams: {vectorizer.ngram_range},weight: {weightOnena}-ren zehastauna (metodoa: {solverOnena}) (c: {COnena}): " + str(onena))
     return onena, vectorizer.max_features, vectorizer.min_df, vectorizer.ngram_range, weightOnena, solverOnena, COnena
 C1 = [0.01, 0.5, 1.0, 2.0, 5.0, 10.0, 15.0, 20.0, 50.0]
-#C2 = [0.001, 0.05, 0.1, 0.12, 0.2, 0.75, 1.0, 2.0, 3.75, 5.0, 10.0]
 
 all_features = [40000, 60000, 80000, 100000]
 ngrams = [(1, 3), (1, 4), (1, 5), (1, 6), (1, 7), (1, 8), (1, 9), (1, 10)]
 min_dfs = [1, 2, 3, 5]
 onenak = []
-'''
+
 for features in all_features:
     for ngram in ngrams:
             for mins in min_dfs:
@@ -109,8 +108,6 @@ for features in all_features:
                     onenak.pop()
 for onena in onenak:
     print(onena)
-'''
-#saiatu_vectorizer(vectorizer2, C2)
 
 def iragarpen (vectorizer, C):
     X_train_lr = vectorizer.fit_transform(trainX)
@@ -122,7 +119,6 @@ def iragarpen (vectorizer, C):
     pred = le.inverse_transform(pred_num)
     return pred
 vectorizerIragarpen = TfidfVectorizer(max_features=40000, lowercase=True, binary=False, ngram_range=(1,3), stop_words=STOP_WORDS, min_df=2, sublinear_tf=True)
-#pred1 = iragarpen(vectorizerIragarpen, 10.0) # len = 1000
 
 def iragarpenTest (vectorizer, C):
     X_train_lr = vectorizer.fit_transform(trainX)
