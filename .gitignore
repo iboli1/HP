@@ -1,0 +1,7 @@
+nlp_env/ 
+.vscode/
+__pycache__/ 
+.ipynb_checkpoints/ 
+*.pyc 
+pred.csv 
+*.zip
